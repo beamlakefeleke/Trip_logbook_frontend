@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./components/Navbar";
@@ -13,7 +14,7 @@ import AdminPage from "./pages/AdminPage";
 import LoginForm from "./pages/LoginPage";
 import RegisterForm from "./pages/RegisterForm";
 import PrivateRoute from "./routes/PrivateRoute";
-import UnauthorizedPage from "./pages/UnauthorizedPage"; // 🚨 Add this page!
+import UnauthorizedPage from "./pages/UnauthorizedPage"; // 🚨 Unauthorized Page
 
 // 🌗 Theme Toggle Support
 const lightTheme = createTheme({
@@ -29,7 +30,7 @@ const App = () => {
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
       <CssBaseline />
-      <Router>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
         <AnimatePresence mode="wait">
           <motion.div
@@ -44,7 +45,7 @@ const App = () => {
               <Route path="/register" element={<RegisterForm />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-              {/* Protected Routes */}
+              {/* 🔐 Protected Routes */}
               <Route element={<PrivateRoute allowedRoles={["driver", "admin"]} />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/compliance" element={<CompliancePage />} />
@@ -62,7 +63,7 @@ const App = () => {
           </motion.div>
         </AnimatePresence>
         <Footer />
-      </Router>
+      </BrowserRouter>
     </ThemeProvider>
   );
 };

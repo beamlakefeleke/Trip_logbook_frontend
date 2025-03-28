@@ -1,47 +1,42 @@
-import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState, useEffect, useCallback } from "react";
+import { useDispatch } from "react-redux";
 import { createTrip } from "../redux/slices/tripSlice";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import GooglePlacesAutocomplete from "react-google-autocomplete";
-import { GoogleMap, LoadScript, Marker, DirectionsRenderer } from "@react-google-maps/api";
 import {
   Container,
   Typography,
   TextField,
   Button,
-  Grid2 as Grid,
+  Grid,
   Paper,
-  CircularProgress,
   Snackbar,
   Alert,
+  Autocomplete,
 } from "@mui/material";
-import { DirectionsCar, AddLocation, Send } from "@mui/icons-material";
-
-// 🎬 Animation Variants
-const fadeIn = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
+import { DirectionsCar, Send } from "@mui/icons-material";
+import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
+import L from "leaflet"; // Import Leaflet
+import "leaflet/dist/leaflet.css";
 
 // 📜 Validation Schema
 const validationSchema = Yup.object({
   pickup_location: Yup.string().required("Pickup location is required"),
   dropoff_location: Yup.string().required("Dropoff location is required"),
-  cycle_used: Yup.number().min(0, "Cycle hours must be positive").max(70, "Max cycle limit is 70 hours").required(),
+  cycle_used: Yup.number().min(0, "Cycle hours must be positive").required(),
   fuel_stops: Yup.number().min(0, "Fuel stops cannot be negative").required(),
 });
 
 const TripFormPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { loading } = useSelector((state) => state.trips);
   const [success, setSuccess] = useState(false);
   const [pickupCoords, setPickupCoords] = useState(null);
   const [dropoffCoords, setDropoffCoords] = useState(null);
-  const [directions, setDirections] = useState(null);
+  const [routeCoords, setRouteCoords] = useState([]);
+  const [pickupOptions, setPickupOptions] = useState([]);
+  const [dropoffOptions, setDropoffOptions] = useState([]);
 
   // 📌 Formik Hook
   const formik = useFormik({
@@ -53,7 +48,7 @@ const TripFormPage = () => {
     },
     validationSchema,
     onSubmit: (values) => {
-      dispatch(createTrip (values))
+      dispatch(createTrip(values))
         .unwrap()
         .then(() => {
           setSuccess(true);
@@ -62,146 +57,192 @@ const TripFormPage = () => {
     },
   });
 
-  // 🗺️ Google Maps Directions API
-  const calculateRoute = () => {
-    if (!pickupCoords || !dropoffCoords) return;
-
-    const directionsService = new window.google.maps.DirectionsService();
-    directionsService.route(
-      {
-        origin: pickupCoords,
-        destination: dropoffCoords,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === "OK") {
-          setDirections(result);
-        } else {
-          console.error("Error fetching directions:", status);
-        }
+  // 🌍 Fetch Coordinates using OpenStreetMap API
+  const fetchCoordinates = useCallback(async (location, setCoords, setOptions) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${location}&format=json&limit=5`
+      );
+      const data = await response.json();
+      if (data.length > 0) {
+        const options = data.map(item => item.display_name); // map the results to display names
+        setOptions(options);
+        const { lat, lon } = data[0];
+        console.log("Fetched Coordinates: ", lat, lon); // Debugging: Check if coordinates are fetched
+        setCoords([parseFloat(lat), parseFloat(lon)]);
       }
-    );
-  };
+    } catch (error) {
+      console.error("Error fetching coordinates:", error);
+    }
+  }, []);
+
+  // 🚗 Fetch Route using OSRM API
+  useEffect(() => {
+    const fetchRoute = async () => {
+      if (!pickupCoords || !dropoffCoords) return;
+
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${pickupCoords[1]},${pickupCoords[0]};${dropoffCoords[1]},${dropoffCoords[0]}?geometries=geojson`
+        );
+        const data = await response.json();
+        if (data.routes && data.routes.length > 0) {
+          const coordinates = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+          console.log("Fetched Route Coordinates: ", coordinates); // Debugging: Check route coordinates
+          setRouteCoords(coordinates);
+        } else {
+          console.error("No route found");
+          setRouteCoords([]);
+        }
+      } catch (error) {
+        console.error("Error fetching route:", error);
+        setRouteCoords([]); // Clear route on error
+      }
+    };
+
+    fetchRoute();
+  }, [pickupCoords, dropoffCoords]);
+
+  // 📍 Custom Icons for Markers
+  const pickupIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25694.png", // Example pickup icon URL
+    iconSize: [32, 32], // Set size of the icon
+    iconAnchor: [16, 32], // Anchor icon at bottom center
+    popupAnchor: [0, -32], // Popup anchor
+  });
+
+  const dropoffIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/25/25695.png", // Example dropoff icon URL
+    iconSize: [32, 32], // Set size of the icon
+    iconAnchor: [16, 32], // Anchor icon at bottom center
+    popupAnchor: [0, -32], // Popup anchor
+  });
 
   return (
     <Container maxWidth="md" sx={{ mt: 5 }}>
-      <motion.div initial="hidden" animate="visible" variants={fadeIn}>
-        <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: "bold" }}>
-          <DirectionsCar sx={{ mr: 1, fontSize: 35, color: "#1976d2" }} />
-          Create New Trip
-        </Typography>
-      </motion.div>
+      <Typography variant="h4" gutterBottom align="center" sx={{ fontWeight: "bold" }}>
+        <DirectionsCar sx={{ mr: 1, fontSize: 35, color: "#1976d2" }} />
+        Create New Trip
+      </Typography>
 
       {/* 🎯 Form Section */}
-      <motion.div initial="hidden" animate="visible" variants={fadeIn} transition={{ delay: 0.2 }}>
-        <Paper elevation={3} sx={{ p: 4, mt: 3 }}>
-          <form onSubmit={formik.handleSubmit}>
-            <Grid container spacing={3}>
-              {/* 📍 Pickup Location */}
-              <Grid item xs={12}>
-                <GooglePlacesAutocomplete
-                  apiKey="YOUR_GOOGLE_MAPS_API_KEY"
-                  onPlaceSelected={(place) => {
-                    formik.setFieldValue("pickup_location", place.formatted_address);
-                    setPickupCoords({
-                      lat: place.geometry.location.lat(),
-                      lng: place.geometry.location.lng(),
-                    });
-                  }}
-                  className="google-autocomplete"
-                />
-                {formik.touched.pickup_location && formik.errors.pickup_location && (
-                  <Typography color="error">{formik.errors.pickup_location}</Typography>
+      <Paper elevation={3} sx={{ p: 4, mt: 3 }}>
+        <form onSubmit={formik.handleSubmit}>
+          <Grid container spacing={3}>
+            {/* 📍 Pickup Location */}
+            <Grid item xs={12}>
+              <Autocomplete
+                freeSolo
+                options={pickupOptions}
+                onInputChange={(event, newInputValue) => {
+                  fetchCoordinates(newInputValue, setPickupCoords, setPickupOptions);
+                }}
+                onChange={(event, value) => {
+                  formik.setFieldValue("pickup_location", value);
+                  fetchCoordinates(value, setPickupCoords, setPickupOptions);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Pickup Location"
+                    {...formik.getFieldProps("pickup_location")}
+                    error={formik.touched.pickup_location && Boolean(formik.errors.pickup_location)}
+                    helperText={formik.touched.pickup_location && formik.errors.pickup_location}
+                  />
                 )}
-              </Grid>
-
-              {/* 📍 Drop-off Location */}
-              <Grid item xs={12}>
-                <GooglePlacesAutocomplete
-                  apiKey="YOUR_GOOGLE_MAPS_API_KEY"
-                  onPlaceSelected={(place) => {
-                    formik.setFieldValue("dropoff_location", place.formatted_address);
-                    setDropoffCoords({
-                      lat: place.geometry.location.lat(),
-                      lng: place.geometry.location.lng(),
-                    });
-                    calculateRoute(); // Auto-update route
-                  }}
-                  className="google-autocomplete"
-                />
-                {formik.touched.dropoff_location && formik.errors.dropoff_location && (
-                  <Typography color="error">{formik.errors.dropoff_location}</Typography>
-                )}
-              </Grid>
-
-              {/* 🗺️ Map Preview */}
-              <Grid item xs={12}>
-                <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
-                  <GoogleMap
-                    center={pickupCoords || { lat: 37.7749, lng: -122.4194 }}
-                    zoom={8}
-                    mapContainerStyle={{ height: "300px", width: "100%" }}
-                  >
-                    {pickupCoords && <Marker position={pickupCoords} label="Pickup" />}
-                    {dropoffCoords && <Marker position={dropoffCoords} label="Drop-off" />}
-                    {directions && <DirectionsRenderer directions={directions} />}
-                  </GoogleMap>
-                </LoadScript>
-              </Grid>
-
-              {/* ⏳ Cycle Hours Used */}
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Cycle Hours Used"
-                  type="number"
-                  name="cycle_used"
-                  value={formik.values.cycle_used}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={formik.touched.cycle_used && Boolean(formik.errors.cycle_used)}
-                  helperText={formik.touched.cycle_used && formik.errors.cycle_used}
-                />
-              </Grid>
-
-              {/* ⛽ Fuel Stops */}
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Fuel Stops"
-                  type="number"
-                  name="fuel_stops"
-                  value={formik.values.fuel_stops}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={formik.touched.fuel_stops && Boolean(formik.errors.fuel_stops)}
-                  helperText={formik.touched.fuel_stops && formik.errors.fuel_stops}
-                />
-              </Grid>
-
-              {/* 🎯 Submit Button */}
-              <Grid item xs={12} sx={{ textAlign: "center" }}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  size="large"
-                  endIcon={<Send />}
-                  disabled={loading}
-                >
-                  {loading ? <CircularProgress size={24} sx={{ color: "white" }} /> : "Submit Trip"}
-                </Button>
-              </Grid>
+              />
             </Grid>
-          </form>
-        </Paper>
-      </motion.div>
+
+            {/* 📍 Drop-off Location */}
+            <Grid item xs={12}>
+              <Autocomplete
+                freeSolo
+                options={dropoffOptions}
+                onInputChange={(event, newInputValue) => {
+                  fetchCoordinates(newInputValue, setDropoffCoords, setDropoffOptions);
+                }}
+                onChange={(event, value) => {
+                  formik.setFieldValue("dropoff_location", value);
+                  fetchCoordinates(value, setDropoffCoords, setDropoffOptions);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Drop-off Location"
+                    {...formik.getFieldProps("dropoff_location")}
+                    error={formik.touched.dropoff_location && Boolean(formik.errors.dropoff_location)}
+                    helperText={formik.touched.dropoff_location && formik.errors.dropoff_location}
+                  />
+                )}
+              />
+            </Grid>
+
+            {/* 🗺️ Map Preview */}
+            <Grid item xs={12}>
+              <MapContainer
+                key={`${pickupCoords ? pickupCoords.join(",") : ""}-${dropoffCoords ? dropoffCoords.join(",") : ""}`} // unique key
+                center={pickupCoords || [37.7749, -122.4194]} // default to San Francisco if no coordinates
+                zoom={8}
+                style={{ height: "300px", width: "100%" }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                {/* Add Pickup Marker with Custom Icon */}
+                {pickupCoords && <Marker position={pickupCoords} icon={pickupIcon} />}
+                {/* Add Dropoff Marker with Custom Icon */}
+                {dropoffCoords && <Marker position={dropoffCoords} icon={dropoffIcon} />}
+                {/* Add Route Polyline */}
+                {routeCoords.length > 0 && <Polyline positions={routeCoords} color="blue" />}
+              </MapContainer>
+            </Grid>
+
+            {/* ⏳ Cycle Hours */}
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Cycle Hours"
+                type="number"
+                {...formik.getFieldProps("cycle_used")}
+                error={formik.touched.cycle_used && Boolean(formik.errors.cycle_used)}
+                helperText={formik.touched.cycle_used && formik.errors.cycle_used}
+              />
+            </Grid>
+
+            {/* ⛽ Fuel Stops */}
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Fuel Stops"
+                type="number"
+                {...formik.getFieldProps("fuel_stops")}
+                error={formik.touched.fuel_stops && Boolean(formik.errors.fuel_stops)}
+                helperText={formik.touched.fuel_stops && formik.errors.fuel_stops}
+              />
+            </Grid>
+
+            {/* 🚀 Submit Button */}
+            <Grid item xs={12}>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                startIcon={<Send />}
+                fullWidth
+              >
+                Create Trip
+              </Button>
+            </Grid>
+          </Grid>
+        </form>
+      </Paper>
 
       {/* ✅ Success Snackbar */}
-      <Snackbar open={success} autoHideDuration={3000} onClose={() => setSuccess(false)}>
-        <Alert severity="success" sx={{ width: "100%" }}>
-          Trip successfully created! Redirecting...
-        </Alert>
+      <Snackbar open={success} autoHideDuration={2000} onClose={() => setSuccess(false)}>
+        <Alert severity="success">Trip created successfully!</Alert>
       </Snackbar>
     </Container>
   );

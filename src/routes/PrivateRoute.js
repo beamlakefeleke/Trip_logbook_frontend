@@ -22,6 +22,7 @@ const PrivateRoute = ({ allowedRoles }) => {
   const getStoredUser = () => {
     try {
       const user = localStorage.getItem("user");
+      console.log("user stored", user);
       return user ? JSON.parse(user) : null;
     } catch (error) {
       console.error("Invalid JSON in localStorage:", error);

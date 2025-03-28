@@ -25,10 +25,10 @@ const initialState = {
  */
 export const login = createAsyncThunk("auth/login", async (credentials, thunkAPI) => {
   try {
-      const response = await loginUser(credentials);
-      return response;
+    const response = await loginUser(credentials);
+    return response;
   } catch (error) {
-      return thunkAPI.rejectWithValue(error);
+    return thunkAPI.rejectWithValue(error);
   }
 });
 
@@ -122,6 +122,7 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
+        console.log("Login Success Payload:", action.payload);
         state.loading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.access;
@@ -129,9 +130,13 @@ const authSlice = createSlice({
         console.log("🚀 ~ file: authSlice.js ~ line 123 ~ .addCase ~ state", state);
 
         // Store tokens in localStorage
-        localStorage.setItem("user", JSON.stringify(action.payload.user));
-        localStorage.setItem("access_token", action.payload.access);
-        localStorage.setItem("refresh_token", action.payload.refresh);
+        if (action.payload?.user) {
+          localStorage.setItem("user", JSON.stringify(action.payload.user));
+          localStorage.setItem("access_token", action.payload.access);
+          localStorage.setItem("refresh_token", action.payload.refresh);
+        } else {
+          console.error("Login failed: Invalid user data received.");
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;

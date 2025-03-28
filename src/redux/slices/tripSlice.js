@@ -7,14 +7,16 @@ import axios from "axios";
  * ✅ Allows creating, updating, and deleting trips
  * ✅ Handles loading, success, and error states
  */
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/";
 
 // 🔄 Async Thunk: Fetch All Trips for Logged-in Driver
 export const fetchTrips = createAsyncThunk(
   "trips/fetchTrips",
   async (_, { getState, rejectWithValue }) => {
     try {
-      const token = getState().auth.token; // 🔐 Get JWT token from Redux store
-      const response = await axios.get("/api/trips/", {
+      const token = localStorage.getItem("access_token");// 🔐 Get JWT token from Redux store
+      console.log("token trips", token);
+      const response = await axios.get(`${API_URL} trips/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data; // 🎯 Return API response
@@ -27,10 +29,11 @@ export const fetchTrips = createAsyncThunk(
 // 🆕 Async Thunk: Create a New Trip
 export const createTrip = createAsyncThunk(
   "trips/createTrip",
-  async (tripData, { getState, rejectWithValue }) => {
+  async (tripData, { rejectWithValue }) => {
     try {
-      const token = getState().auth.token;
-      const response = await axios.post("/api/trips/", tripData, {
+      const token = localStorage.getItem("access_token");
+      console.log("token trips", token);
+      const response = await axios.post(`${API_URL} trips/`, tripData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data;
@@ -43,10 +46,10 @@ export const createTrip = createAsyncThunk(
 // ✏️ Async Thunk: Update Trip
 export const updateTrip = createAsyncThunk(
   "trips/updateTrip",
-  async ({ tripId, tripData }, { getState, rejectWithValue }) => {
+  async ({ tripId, tripData }, {  rejectWithValue }) => {
     try {
-      const token = getState().auth.token;
-      const response = await axios.put(`/api/trips/${tripId}/`, tripData, {
+      const token = localStorage.getItem("access_token");
+      const response = await axios.put(`${API_URL} trips/${tripId}/`, tripData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data;
@@ -59,10 +62,10 @@ export const updateTrip = createAsyncThunk(
 // ❌ Async Thunk: Delete a Trip
 export const deleteTrip = createAsyncThunk(
   "trips/deleteTrip",
-  async (tripId, { getState, rejectWithValue }) => {
+  async (tripId, {  rejectWithValue }) => {
     try {
-      const token = getState().auth.token;
-      await axios.delete(`/api/trips/${tripId}/`, {
+      const token = localStorage.getItem("access_token");
+      await axios.delete(`${API_URL} trips/${tripId}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return tripId; // Return deleted trip ID to update Redux state

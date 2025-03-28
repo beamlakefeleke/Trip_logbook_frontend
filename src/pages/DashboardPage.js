@@ -161,29 +161,42 @@ const DashboardPage = () => {
           Trucks & Drivers
         </Typography>
         <TableContainer component={Paper} sx={{ mt: 2 }}>
-          <Table>
-            <TableHead sx={{ backgroundColor: "#1976d2", color: "white" }}>
-              <TableRow>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Truck ID</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Driver</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {trucksLoading ? (
-                <CircularProgress size={30} />
-              ) : (
-                trucks.map((truck) => (
-                  <TableRow key={truck.id}>
-                    <TableCell>{truck.id}</TableCell>
-                    <TableCell>{truck.driver.username}</TableCell>
-                    <TableCell>{truck.status}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+  <Table>
+    <TableHead sx={{ backgroundColor: "#1976d2", color: "white" }}>
+      <TableRow>
+        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Truck ID</TableCell>
+        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Driver</TableCell>
+        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Status</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {trucksLoading ? (
+        <TableRow>
+          <TableCell colSpan={3} align="center">
+            <CircularProgress size={30} />
+          </TableCell>
+        </TableRow>
+      ) : (
+        trucks.length > 0 ? (
+          trucks.map((truck) => (
+            <TableRow key={truck.id}>
+              <TableCell>{truck.id}</TableCell>
+              <TableCell>{truck.driver?.username || "N/A"}</TableCell>
+              <TableCell>{truck.status}</TableCell>
+            </TableRow>
+          ))
+        ) : (
+          <TableRow>
+            <TableCell colSpan={3} align="center">
+              No trucks available.
+            </TableCell>
+          </TableRow>
+        )
+      )}
+    </TableBody>
+  </Table>
+</TableContainer>
+
       </motion.div>
     </Container>
   );

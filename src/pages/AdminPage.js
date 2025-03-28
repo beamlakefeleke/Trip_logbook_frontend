@@ -120,59 +120,84 @@ const AdminPage = () => {
           Registered Users
         </Typography>
         <TableContainer component={Paper} sx={{ mt: 2 }}>
-          <Table>
-            <TableHead sx={{ backgroundColor: "#1976d2", color: "white" }}>
-              <TableRow>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>ID</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Username</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Email</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Role</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.id}</TableCell>
-                  <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </motion.div>
+  <Table>
+    <TableHead sx={{ backgroundColor: "#1976d2", color: "white" }}>
+      <TableRow>
+        <TableCell sx={{ color: "white", fontWeight: "bold" }}>ID</TableCell>
+        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Username</TableCell>
+        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Email</TableCell>
+        <TableCell sx={{ color: "white", fontWeight: "bold" }}>Role</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {usersLoading ? ( // ✅ Add loading state check
+        <TableRow>
+          <TableCell colSpan={4} align="center">
+            <CircularProgress size={30} />
+          </TableCell>
+        </TableRow>
+      ) : users.length > 0 ? (
+        users.map((user) => (
+          <TableRow key={user.id}>
+            <TableCell>{user.id}</TableCell>
+            <TableCell>{user.username}</TableCell>
+            <TableCell>{user.email}</TableCell>
+            <TableCell>{user.role}</TableCell>
+          </TableRow>
+        ))
+      ) : (
+        <TableRow>
+          <TableCell colSpan={4} align="center">No users available.</TableCell>
+        </TableRow>
+      )}
+    </TableBody>
+  </Table>
+</TableContainer>
 
-      {/* 📋 Trip Table */}
-      <motion.div initial="hidden" animate="visible" variants={fadeIn} transition={{ delay: 0.3 }}>
-        <Typography variant="h5" sx={{ mt: 5, fontWeight: "bold", color: "#28a745" }}>
-          <DirectionsCar sx={{ mr: 1 }} />
-          Active Trips
-        </Typography>
-        <TableContainer component={Paper} sx={{ mt: 2 }}>
-          <Table>
-            <TableHead sx={{ backgroundColor: "#28a745", color: "white" }}>
-              <TableRow>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>ID</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Driver</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Status</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Pickup</TableCell>
-                <TableCell sx={{ color: "white", fontWeight: "bold" }}>Dropoff</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {trips.map((trip) => (
-                <TableRow key={trip.id}>
-                  <TableCell>{trip.id}</TableCell>
-                  <TableCell>{trip.driver.username}</TableCell>
-                  <TableCell>{trip.status}</TableCell>
-                  <TableCell>{trip.pickup_location}</TableCell>
-                  <TableCell>{trip.dropoff_location}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+{/* 📋 Active Trips Table */}
+<motion.div initial="hidden" animate="visible" variants={fadeIn} transition={{ delay: 0.3 }}>
+  <Typography variant="h5" sx={{ mt: 5, fontWeight: "bold", color: "#28a745" }}>
+    <DirectionsCar sx={{ mr: 1 }} />
+    Active Trips
+  </Typography>
+  <TableContainer component={Paper} sx={{ mt: 2 }}>
+    <Table>
+      <TableHead sx={{ backgroundColor: "#28a745", color: "white" }}>
+        <TableRow>
+          <TableCell sx={{ color: "white", fontWeight: "bold" }}>ID</TableCell>
+          <TableCell sx={{ color: "white", fontWeight: "bold" }}>Driver</TableCell>
+          <TableCell sx={{ color: "white", fontWeight: "bold" }}>Status</TableCell>
+          <TableCell sx={{ color: "white", fontWeight: "bold" }}>Pickup</TableCell>
+          <TableCell sx={{ color: "white", fontWeight: "bold" }}>Dropoff</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {tripsLoading ? ( // ✅ Add loading state check
+          <TableRow>
+            <TableCell colSpan={5} align="center">
+              <CircularProgress size={30} />
+            </TableCell>
+          </TableRow>
+        ) : trips.length > 0 ? (
+          trips.map((trip) => (
+            <TableRow key={trip.id}>
+              <TableCell>{trip.id}</TableCell>
+              <TableCell>{trip.driver?.username || "N/A"}</TableCell> {/* ✅ Fix possible crash */}
+              <TableCell>{trip.status}</TableCell>
+              <TableCell>{trip.pickup_location}</TableCell>
+              <TableCell>{trip.dropoff_location}</TableCell>
+            </TableRow>
+          ))
+        ) : (
+          <TableRow>
+            <TableCell colSpan={5} align="center">No active trips available.</TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  </TableContainer>
+</motion.div>
+
       </motion.div>
     </Container>
   );

@@ -7,14 +7,15 @@ import axios from "axios";
  * ✅ Adds and deletes log entries
  * ✅ Handles loading, success, and error states
  */
-
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/";
 // 🔄 Async Thunk: Fetch Log Entries for a Trip
 export const fetchLogs = createAsyncThunk(
   "logs/fetchLogs",
-  async (tripId, { getState, rejectWithValue }) => {
+  async (tripId, {  rejectWithValue }) => {
     try {
-      const token = getState().auth.token; // 🔐 Get token from Redux store
-      const response = await axios.get(`/api/logs/?trip_id=${tripId}`, {
+      const token = localStorage.getItem("access_token"); // 🔐 Get token from Redux store
+      console.log("token logs", token);
+      const response = await axios.get(`${API_URL} logs/?trip_id=${tripId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data; // 🎯 Return API response
@@ -27,10 +28,11 @@ export const fetchLogs = createAsyncThunk(
 // 📝 Async Thunk: Add a New Log Entry
 export const addLogEntry = createAsyncThunk(
   "logs/addLog",
-  async (logData, { getState, rejectWithValue }) => {
+  async (logData, { rejectWithValue }) => {
     try {
-      const token = getState().auth.token;
-      const response = await axios.post("/api/logs/", logData, {
+      const token = localStorage.getItem("access_token");
+      console.log("token logs", token);
+      const response = await axios.post(`${API_URL} logs/`, logData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data;
@@ -43,10 +45,10 @@ export const addLogEntry = createAsyncThunk(
 // ❌ Async Thunk: Delete a Log Entry
 export const deleteLogEntry = createAsyncThunk(
   "logs/deleteLog",
-  async (logId, { getState, rejectWithValue }) => {
+  async (logId, {  rejectWithValue }) => {
     try {
-      const token = getState().auth.token;
-      await axios.delete(`/api/logs/${logId}/`, {
+      const token = localStorage.getItem("access_token");
+      await axios.delete(`${API_URL} logs/${logId}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return logId; // Return deleted log ID to update Redux state

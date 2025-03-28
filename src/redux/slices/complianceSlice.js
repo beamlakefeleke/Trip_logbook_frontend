@@ -7,14 +7,16 @@ import axios from "axios";
  * ✅ Stores compliance status in Redux store
  * ✅ Handles loading, success, and error states
  */
-
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api/";
 // 🔄 Async Thunk: Fetch Compliance Status
 export const fetchComplianceStatus = createAsyncThunk(
   "compliance/fetchStatus",
   async (_, { getState, rejectWithValue }) => {
     try {
-      const token = getState().auth.token; // 🔐 Get token from Redux store
-      const response = await axios.get("/api/compliance/", {
+      const token = localStorage.getItem("access_token");// 🔐 Get token from Redux store
+      console.log("token compliance", token);
+      
+      const response = await axios.get(`${API_URL} compliance/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data; // 🎯 Return API response

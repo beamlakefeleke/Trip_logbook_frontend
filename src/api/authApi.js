@@ -54,6 +54,7 @@ export const loginUser = async (credentials) => {
     localStorage.setItem("access_token", access);
     localStorage.setItem("refresh_token", refresh);
     localStorage.setItem("user", JSON.stringify(user));
+    console.log("user authapi", user);
 
     return response.data;
   } catch (error) {

@@ -1,22 +1,36 @@
 import React, { useState, useEffect } from "react";
 import { AppBar, Toolbar, Typography, IconButton, Button, Box, Menu, MenuItem, Divider } from "@mui/material";
-import { DarkMode, LightMode, Menu as MenuIcon, Logout, AccountCircle } from "@mui/icons-material";
+import { DarkMode, LightMode, Menu as MenuIcon, Logout } from "@mui/icons-material";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../redux/slices/authSlice";
 import { motion } from "framer-motion";
 
+const getStoredUser = () => {
+  try {
+    const user = localStorage.getItem("user");
+    console.log("Stored User:", user);
+    return user ? JSON.parse(user) : null;
+  } catch (error) {
+    console.error("Invalid JSON in localStorage:", error);
+    return null;
+  }
+};
+
 const Navbar = ({ darkMode, setDarkMode }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.auth); // Get user from Redux state
+  const reduxUser = useSelector((state) => state.auth.user); // Redux state user
 
-  const open = Boolean(anchorEl);
+  const [user, setUser] = useState(getStoredUser()); // Local state
 
   useEffect(() => {
-    console.log("User State Updated:", user);
-  }, [user]); // Debugging: Log when the user state updates
+    console.log("Redux User Updated:", reduxUser);
+    setUser(getStoredUser()); // Sync user state with localStorage changes
+  }, [reduxUser]); // Run when Redux state changes
+
+  const open = Boolean(anchorEl);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -28,6 +42,10 @@ const Navbar = ({ darkMode, setDarkMode }) => {
 
   const handleLogout = () => {
     dispatch(logout());
+    localStorage.removeItem("user"); // Clear localStorage
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    setUser(null); // Update local state
     navigate("/login");
   };
 
@@ -50,7 +68,8 @@ const Navbar = ({ darkMode, setDarkMode }) => {
         {/* 🌐 Desktop Navigation Links */}
         <Box sx={{ display: { xs: "none", md: "flex" }, gap: 2 }}>
           <Button color="inherit" component={Link} to="/">Home</Button>
-          {user ? (
+          
+          {user && (
             <>
               <Button color="inherit" component={Link} to="/dashboard">Dashboard</Button>
               <Button color="inherit" component={Link} to="/logs">Logs</Button>
@@ -61,8 +80,11 @@ const Navbar = ({ darkMode, setDarkMode }) => {
               {user.role === "admin" && (
                 <Button color="inherit" component={Link} to="/admin">Admin Panel</Button>
               )}
+              <Button color="inherit" onClick={handleLogout}>
+                <Logout sx={{ mr: 1 }} /> 
+              </Button>
             </>
-          ) : null}
+          )}
         </Box>
 
         {/* 🌙 Dark Mode Toggle */}
@@ -70,48 +92,32 @@ const Navbar = ({ darkMode, setDarkMode }) => {
           {darkMode ? <LightMode /> : <DarkMode />}
         </IconButton>
 
-        {/* 👤 Show Profile Menu if Logged In, Else Show Login Button */}
-        {user ? (
-          <>
-            <IconButton color="inherit" onClick={handleMenuClick}>
-              <AccountCircle />
-            </IconButton>
-            <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-              <MenuItem onClick={handleClose} component={Link} to="/profile">Profile</MenuItem>
-              <Divider />
-              <MenuItem onClick={handleLogout}>
-                <Logout fontSize="small" sx={{ mr: 1 }} /> Logout
-              </MenuItem>
-            </Menu>
-          </>
-        ) : (
-          <Button color="inherit" component={Link} to="/login">Login</Button>
-        )}
-
         {/* 📱 Mobile Menu */}
         <Box sx={{ display: { xs: "block", md: "none" } }}>
           <IconButton color="inherit" onClick={handleMenuClick}>
             <MenuIcon />
           </IconButton>
           <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-            <MenuItem onClick={() => navigate("/")}>Home</MenuItem>
-            {user ? (
-              <>
-                <MenuItem onClick={() => navigate("/dashboard")}>Dashboard</MenuItem>
-                <MenuItem onClick={() => navigate("/logs")}>Logs</MenuItem>
-                <MenuItem onClick={() => navigate("/trip/new")}>New Trip</MenuItem>
-                <MenuItem onClick={() => navigate("/compliance")}>Compliance</MenuItem>
-                <MenuItem onClick={() => navigate("/trucks")}>Trucks</MenuItem>
-                <MenuItem onClick={() => navigate("/drivers")}>Drivers</MenuItem>
-                {user.role === "admin" && <MenuItem onClick={() => navigate("/admin")}>Admin Panel</MenuItem>}
-                <Divider />
-                <MenuItem onClick={handleLogout}>
-                  <Logout fontSize="small" sx={{ mr: 1 }} /> Logout
-                </MenuItem>
-              </>
-            ) : (
-              <MenuItem onClick={() => navigate("/login")}>Login</MenuItem>
-            )}
+            {[
+              <MenuItem key="home" onClick={() => navigate("/")}>Home</MenuItem>,
+              user ? (
+                [
+                  <MenuItem key="dashboard" onClick={() => navigate("/dashboard")}>Dashboard</MenuItem>,
+                  <MenuItem key="logs" onClick={() => navigate("/logs")}>Logs</MenuItem>,
+                  <MenuItem key="newTrip" onClick={() => navigate("/trip/new")}>New Trip</MenuItem>,
+                  <MenuItem key="compliance" onClick={() => navigate("/compliance")}>Compliance</MenuItem>,
+                  <MenuItem key="trucks" onClick={() => navigate("/trucks")}>Trucks</MenuItem>,
+                  <MenuItem key="drivers" onClick={() => navigate("/drivers")}>Drivers</MenuItem>,
+                  user.role === "admin" && <MenuItem key="admin" onClick={() => navigate("/admin")}>Admin Panel</MenuItem>,
+                  <Divider key="mobile-divider" />,
+                  <MenuItem key="mobile-logout" onClick={handleLogout}>
+                    <Logout fontSize="small" sx={{ mr: 1 }} /> Logout
+                  </MenuItem>,
+                ]
+              ) : (
+                <MenuItem key="login" onClick={() => navigate("/login")}>Login</MenuItem>
+              ),
+            ]}
           </Menu>
         </Box>
       </Toolbar>

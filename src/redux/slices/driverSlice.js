@@ -7,6 +7,7 @@ const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api";
 // ✅ Function to Get Token Securely
 const getAuthHeaders = () => {
   const token = localStorage.getItem("access_token");
+  console.log("token drivers", token);
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 

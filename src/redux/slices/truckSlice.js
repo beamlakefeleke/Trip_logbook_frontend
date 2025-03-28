@@ -10,6 +10,7 @@ export const fetchTrucks = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
         const token = localStorage.getItem("access_token");
+        console.log("token trucks", token);
       const response = await axios.get(`${API_URL}trucks/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
